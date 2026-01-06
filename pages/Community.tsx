@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-// Fix: Import from @firebase/firestore instead of firebase/firestore to resolve missing export errors
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, arrayUnion, arrayRemove } from '@firebase/firestore';
 import { useAuth } from '../App';
 import { Post } from '../types';
@@ -34,7 +33,7 @@ const Community: React.FC = () => {
       });
       setNewPost('');
     } catch (e) {
-      console.error(e);
+      console.error("Posting Error:", e);
     } finally {
       setLoading(false);
     }
@@ -43,51 +42,84 @@ const Community: React.FC = () => {
   const handleLike = async (postId: string, liked: boolean) => {
     if (!user) return;
     const postRef = doc(db, 'posts', postId);
-    await updateDoc(postRef, {
-      likes: liked ? arrayRemove(user.phone) : arrayUnion(user.phone)
-    });
+    try {
+      await updateDoc(postRef, {
+        likes: liked ? arrayRemove(user.phone) : arrayUnion(user.phone)
+      });
+    } catch (e) {
+      console.error("Like Error:", e);
+    }
+  };
+
+  /**
+   * Extremely robust date formatter for Firestore.
+   * Handles serverTimestamp() delay, serialization, and missing data.
+   */
+  const formatSafeDate = (ts: any) => {
+    if (!ts) return 'جاري النشر...'; // Handles local serverTimestamp delay
+    
+    try {
+      // 1. Check if it's a Firestore Timestamp object with toDate()
+      if (typeof ts.toDate === 'function') {
+        return ts.toDate().toLocaleDateString('ar-JO', { month: 'short', day: 'numeric' });
+      }
+      
+      // 2. Check for plain object serialization { seconds: ..., nanoseconds: ... }
+      if (ts.seconds) {
+        return new Date(ts.seconds * 1000).toLocaleDateString('ar-JO', { month: 'short', day: 'numeric' });
+      }
+
+      // 3. Fallback for strings or native Dates
+      const date = new Date(ts);
+      if (!isNaN(date.getTime())) {
+        return date.toLocaleDateString('ar-JO', { month: 'short', day: 'numeric' });
+      }
+    } catch (e) {
+      console.warn("Date formatting failed", e);
+    }
+    
+    return 'منذ قليل';
   };
 
   return (
     <div className="space-y-6">
-      <div className="glass p-4 rounded-[2rem] border-white">
+      <div className="glass p-4 rounded-[2rem] border-white shadow-sm">
         <textarea 
-          className="w-full bg-transparent p-4 outline-none resize-none text-gray-700 min-h-[100px]"
+          className="w-full bg-transparent p-4 outline-none resize-none text-gray-700 min-h-[100px] placeholder:text-gray-400"
           placeholder="ماذا يخطر ببالكِ اليوم؟ شاركينا تجربتكِ..."
           value={newPost}
           onChange={e => setNewPost(e.target.value)}
         />
         <div className="flex justify-between items-center mt-2 px-2">
           <div className="flex gap-4 text-pink-400">
-            <i className="fa-regular fa-image cursor-pointer hover:scale-110"></i>
-            <i className="fa-regular fa-face-smile cursor-pointer hover:scale-110"></i>
+            <i className="fa-regular fa-image cursor-pointer hover:scale-120 transition-transform"></i>
+            <i className="fa-regular fa-face-smile cursor-pointer hover:scale-120 transition-transform"></i>
           </div>
           <button 
             onClick={handlePost}
             disabled={loading || !newPost.trim()}
-            className="bg-pink-500 text-white font-bold py-2 px-6 rounded-xl shadow-lg active:scale-95 disabled:opacity-50"
+            className="bg-gradient-to-r from-pink-500 to-rose-400 text-white font-bold py-2 px-8 rounded-xl shadow-lg active:scale-95 disabled:opacity-50 transition-all"
           >
-            نشر
+            {loading ? 'نشر...' : 'نشر'}
           </button>
         </div>
       </div>
 
       <div className="space-y-4">
         {posts.map((post) => {
-          // Defensive check: ensure likes is an array before calling includes
           const likesArray = Array.isArray(post.likes) ? post.likes : [];
           const isLiked = likesArray.includes(user?.phone || '');
           
           return (
-            <div key={post.id} className="glass p-6 rounded-[2.5rem] animate-fadeIn border-white">
+            <div key={post.id} className="glass p-6 rounded-[2.5rem] animate-fadeIn border-white shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center text-pink-500 font-bold">
+                <div className="w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center text-pink-500 font-bold border-2 border-white shadow-inner">
                   {post.authorName ? post.authorName[0] : '?'}
                 </div>
                 <div>
                   <h4 className="font-bold text-gray-800 text-sm">{post.authorName}</h4>
-                  <span className="text-[10px] text-gray-400">
-                    {post.timestamp?.toDate() ? new Date(post.timestamp.toDate()).toLocaleDateString('ar-JO') : 'الآن'}
+                  <span className="text-[10px] text-gray-400 font-medium">
+                    {formatSafeDate(post.timestamp)}
                   </span>
                 </div>
               </div>
@@ -95,12 +127,12 @@ const Community: React.FC = () => {
               <div className="flex gap-6 border-t border-white/50 pt-3">
                 <button 
                   onClick={() => handleLike(post.id, isLiked)}
-                  className={`flex items-center gap-1.5 text-sm font-bold transition-all ${isLiked ? 'text-pink-500 scale-110' : 'text-gray-400'}`}
+                  className={`flex items-center gap-1.5 text-sm font-bold transition-all ${isLiked ? 'text-pink-500 scale-105' : 'text-gray-400 hover:text-pink-300'}`}
                 >
                   <i className={`fa-${isLiked ? 'solid' : 'regular'} fa-heart`}></i>
                   <span>{likesArray.length}</span>
                 </button>
-                <button className="flex items-center gap-1.5 text-sm text-gray-400 font-bold">
+                <button className="flex items-center gap-1.5 text-sm text-gray-400 font-bold hover:text-pink-300 transition-colors">
                   <i className="fa-regular fa-comment"></i>
                   <span>تعليق</span>
                 </button>

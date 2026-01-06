@@ -1,34 +1,37 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { UserProfile, UserStatus } from "../types";
+import { UserProfile } from "../types";
 
-// Always initialize with an object containing the apiKey from process.env.API_KEY
+// Initialize the API with the environment key
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
+/**
+ * Generates a personalized greeting using Gemini 3 Flash for low latency.
+ */
 export const getSmartGreeting = async (user: UserProfile): Promise<string> => {
   try {
-    // Using gemini-3-flash-preview for a basic greeting task
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `You are a warm, supportive female companion. Generate a short, encouraging daily greeting in a warm Arabic dialect (Levantine/Jordanian) for a user named ${user.name} who is ${user.status}. Keep it under 15 words.`,
+      contents: `أنتِ رفيقة ذكية لتطبيق "نست جيرل". رحبي بـ ${user.name} (حالتها: ${user.status}) بلهجة أردنية/عامية دافئة جداً. اجعليها تشعر بالراحة. جملة واحدة فقط أقل من 12 كلمة.`,
       config: {
-        systemInstruction: "You are a warm, friendly female assistant for a women's wellness app called Nestgirl.",
+        temperature: 0.9,
       }
     });
-    // Use .text property directly
-    return response.text || "أهلاً بكِ في عائلتكِ، نست جيرل.";
+    return response.text?.trim() || "أهلاً بكِ في عائلتكِ، نست جيرل.";
   } catch (error) {
-    console.error("Gemini Error:", error);
-    return `صباح الخير يا ${user.name}، يومك سعيد!`;
+    console.error("Greeting Error:", error);
+    return `صباح الخير يا ${user.name.split(' ')[0]}، يومك سعيد كقلبك! ✨`;
   }
 };
 
-export const getMealPlan = async (user: UserProfile, goal: string): Promise<any> => {
+/**
+ * Generates a structured 7-day meal plan using Gemini 3 Pro with JSON Schema.
+ */
+export const getMealPlan = async (user: UserProfile, goal: string): Promise<any[]> => {
   try {
-    // Using gemini-3-pro-preview for complex reasoning tasks
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
-      contents: `Generate a 7-day healthy meal plan for ${user.name} (Height: ${user.height}cm, Weight: ${user.weight}kg, Status: ${user.status}). Her goal is: ${goal}. Include Breakfast, Lunch, Snack, and Dinner for each day. Return in JSON format.`,
+      contents: `بصفتكِ خبيرة تغذية، صممي جدولاً غذائياً لـ ${user.name} (الطول: ${user.height}، الوزن: ${user.weight}، الحالة: ${user.status}). الهدف هو: ${goal}.`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -36,7 +39,7 @@ export const getMealPlan = async (user: UserProfile, goal: string): Promise<any>
           items: {
             type: Type.OBJECT,
             properties: {
-              day: { type: Type.STRING },
+              day: { type: Type.STRING, description: "اسم اليوم (مثلاً: السبت)" },
               meals: {
                 type: Type.OBJECT,
                 properties: {
@@ -50,41 +53,49 @@ export const getMealPlan = async (user: UserProfile, goal: string): Promise<any>
             },
             required: ["day", "meals"]
           }
-        }
+        },
+        thinkingConfig: { thinkingBudget: 0 } // Flash-like response for non-complex reasoning
       }
     });
-    // Use .text property directly
-    return JSON.parse(response.text || "[]");
+
+    const data = JSON.parse(response.text || "[]");
+    return Array.isArray(data) ? data : [];
   } catch (error) {
-    console.error("Gemini Error:", error);
-    return null;
+    console.error("Meal Plan Error:", error);
+    return [];
   }
 };
 
+/**
+ * Psychological Chat using Gemini 3 Pro for deep empathy and reasoning.
+ */
 export const getAIResponse = async (user: UserProfile, message: string, history: { role: string, content: string }[]): Promise<string> => {
   try {
-    const contents = history.map(h => ({
+    const formattedHistory = history.map(h => ({
       role: h.role === 'user' ? 'user' : 'model',
       parts: [{ text: h.content }]
     }));
-    
-    contents.push({
-      role: 'user',
-      parts: [{ text: message }]
-    });
 
-    // Using gemini-3-pro-preview for psychological counseling
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
-      contents: contents as any,
+      contents: [
+        ...formattedHistory,
+        { role: 'user', parts: [{ text: message }] }
+      ],
       config: {
-        systemInstruction: `You are a supportive, warm psychological counselor and best friend for women. Your name is 'Nestly'. Speak in a warm, empathetic Jordanian/Levantine dialect (عامية دافئة). The user is ${user.name}, she is ${user.status}. Always be respectful, confidential, and focus on her emotional well-being.`,
+        systemInstruction: `أنتِ "نستلي"، المستشارة النفسية والصديقة المقربة في تطبيق Nestgirl. 
+        تتحدثين بلهجة أردنية عامية دافئة جداً (عامية بيضاء). 
+        المستخدمة هي ${user.name} وحالتها ${user.status}. 
+        كوني مستمعة، متعاطفة، ولا تقدمي نصائح طبية قاسية، بل كوني "الأخت" التي تستمع. 
+        حافظي على السرية والخصوصية.`,
+        temperature: 0.8,
+        thinkingConfig: { thinkingBudget: 4000 } // Enable thinking for better empathy
       }
     });
-    // Use .text property directly
-    return response.text || "أنا هنا لأسمعكِ، أخبريني المزيد.";
+
+    return response.text || "أنا هنا لأسمعكِ يا غالية، كملي شو ببالك؟";
   } catch (error) {
-    console.error("Gemini Error:", error);
-    return "عذراً يا عزيزتي، حدث خطأ بسيط. أنا معكِ دائماً.";
+    console.error("Chat Error:", error);
+    return "عذراً يا عزيزتي، يبدو أن هناك ضغطاً بسيطاً في الاتصال. أنا معكِ دائماً.";
   }
 };

@@ -32,7 +32,7 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     if (user) {
-      getSmartGreeting(user).then(setGreeting);
+      getSmartGreeting(user).then(setGreeting).catch(() => setGreeting("أهلاً بكِ مجدداً في عائلتكِ. ✨"));
       
       if (user.periodStartDate) {
         const start = new Date(user.periodStartDate);
@@ -55,7 +55,7 @@ const Dashboard: React.FC = () => {
     if (!user?.pregnancyStartDate) return 1;
     const start = new Date(user.pregnancyStartDate);
     const diff = Math.floor((new Date().getTime() - start.getTime()) / (1000 * 3600 * 24 * 7));
-    return diff + 1;
+    return Math.max(1, diff + 1);
   };
 
   const tourMessages = [
@@ -172,10 +172,10 @@ const Dashboard: React.FC = () => {
             <div className="w-full bg-pink-100/50 h-4 rounded-full overflow-hidden p-0.5 border border-white">
               <div 
                 className="bg-gradient-to-r from-pink-500 to-rose-400 h-full rounded-full shadow-lg" 
-                style={{ width: `${(getPregnancyWeek() / 40) * 100}%` }}
+                style={{ width: `${Math.min(100, (getPregnancyWeek() / 40) * 100)}%` }}
               ></div>
             </div>
-            <p className="mt-4 text-xs text-gray-600 font-black">المرحلة: الثلث الثاني • موعد الولادة المتوقع 2025</p>
+            <p className="mt-4 text-xs text-gray-600 font-black">المرحلة الحالية • موعد الولادة المتوقع 2025</p>
           </div>
         ) : (
           <div>
@@ -241,16 +241,6 @@ const Dashboard: React.FC = () => {
         </div>
       </Link>
 
-      {/* Tip of the day */}
-      <div className="glass p-5 rounded-[2rem] border-white/40 flex gap-4 items-center">
-        <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center text-yellow-600 shrink-0">
-          <i className="fa-solid fa-lightbulb text-xl"></i>
-        </div>
-        <div>
-          <h5 className="text-xs font-black text-gray-400">نصيحة اليوم</h5>
-          <p className="text-sm font-bold text-gray-700">اشربي كوباً من اليانسون الدافئ لراحة أفضل لدورتكِ اليوم.</p>
-        </div>
-      </div>
       <style>{`
         @keyframes bounce-slow {
           0%, 100% { transform: translateY(-5px); }
