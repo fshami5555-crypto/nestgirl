@@ -11,6 +11,7 @@ import Community from './pages/Community';
 import Store from './pages/Store';
 import SkinCare from './pages/SkinCare';
 import FamilyCare from './pages/FamilyCare';
+import Profile from './pages/Profile';
 import AdminDashboard from './pages/AdminDashboard';
 import Layout from './components/Layout';
 import { db } from './firebase';
@@ -114,6 +115,7 @@ const App: React.FC = () => {
           <Route path="/store" element={user ? <Layout><Store /></Layout> : <Navigate to="/" />} />
           <Route path="/skincare" element={user ? <Layout><SkinCare /></Layout> : <Navigate to="/" />} />
           <Route path="/family" element={user ? <Layout><FamilyCare /></Layout> : <Navigate to="/" />} />
+          <Route path="/profile" element={user ? <Layout><Profile /></Layout> : <Navigate to="/" />} />
           
           <Route path="/admin" element={user?.isAdmin ? <AdminDashboard /> : <Navigate to="/" />} />
           

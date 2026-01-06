@@ -18,7 +18,8 @@ const Login: React.FC = () => {
     }
     const result = await login(phone, password);
     if (result.success) {
-      navigate('/dashboard');
+      // نتوجه للمسار الرئيسي ليقوم App.tsx بتحديد الوجهة بناءً على isAdmin
+      navigate('/');
     } else {
       setError(result.message || 'فشل تسجيل الدخول');
     }
@@ -56,6 +57,9 @@ const Login: React.FC = () => {
               onChange={(e) => setPassword(e.target.value)}
               required
             />
+            {phone === '0781285431' && (
+              <p className="text-[10px] text-pink-400 mt-2 px-1">مرحباً بكِ في مدخل الإدارة</p>
+            )}
           </div>
 
           {error && <p className="text-red-500 text-sm text-center font-medium">{error}</p>}
@@ -65,7 +69,7 @@ const Login: React.FC = () => {
             disabled={loading}
             className="w-full bg-pink-500 hover:bg-pink-600 text-white font-bold py-4 rounded-2xl shadow-lg transition-all active:scale-95 disabled:opacity-50"
           >
-            {loading ? 'جاري الدخول...' : 'تسجيل الدخول'}
+            {loading ? 'جاري التحقق...' : 'تسجيل الدخول'}
           </button>
         </form>
 
